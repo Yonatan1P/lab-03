@@ -2,69 +2,83 @@
 
 console.log('app,js loaded');
 
+let photoTemplateId = "#photo-template";
+let animals = [];
+
 function Animal(animal) {
-  this.image_url = animal.image_url;
-  this.title = animal.title;
-  this.description = animal.description;
-  this.keyword = animal.keyword;
-  this.horns = animal.horns;
-}
+  for (let key in animal)
+    this[key] = animal[key];
+};
 
-Animal.prototype.render = function () {
-  let $animalClone = $('#photo-template').clone();
-  $('main').append($animalClone);
+Animal.prototype.toHtml = function () {
+  let template = $(photoTemplateId).html();
 
-  $animalClone.find('h2').text(this.title);
-  $animalClone.find('img').attr('src', this.image_url);
-  $animalClone.find('p').text(this.description);
-  $animalClone.find('img').attr('atl', this.keyword);
-  
-  $animalClone.removeAttr('id');
-  $animalClone.attr('class', this.keyword);
+  let html = Mustache.render(template, this);
+
+  return html;
 };
 
 Animal.prototype.addOption = function () {
-  if (($('select').find('.option-' + this.keyword)).length){
+  if (($('#animalType').find('.option-' + this.keyword)).length) {
     return;
-  } 
+  }
   let $option = $(`<option value='${this.keyword}' class='option-${this.keyword}'>${this.keyword}</option>`);
-  $('select').append($option);
-}
+  $('#animalType').append($option);
+};
 
 Animal.readJson = (pgNum) => {
-    const ajaxSettings = {
-        method: 'get',
-        dataType: 'json'
-    };
-    
-    $.ajax(`data/page-${pgNum}.json`, ajaxSettings)
+
+  $.getJSON(`data/page-${pgNum}.json`)
     .then(data => {
-        data.forEach(item => {
-            let animal = new Animal(item);
-            animal.render();
-            animal.addOption();
-        });
-        $('section').show();
-        $('#photo-template').hide();
+      data.forEach(animal => {
+        let thisAnimal = new Animal(animal);
+        thisAnimal.addOption();
+        animals.push(thisAnimal);
+        // $('main').append(thisAnimal.toHtml());
+    });
+    $('#animalSort').trigger('change');
     })
 };
 
+// read in page-1.json intitially
 $(() => Animal.readJson(1));
 
-
-$('select').on('change', function(){
+// event for select drop-down menu
+$('#animalType').on('change', function () {
   if (this.value === 'default') {
     $('section').show();
     $('#photo-template').hide();
-} 
+  }
   else {
     $('section').hide();
     $(`.${this.value}`).show();
     console.log(this.value);
-  } 
+  }
 });
 
-$('button').on('click', function(){
-    $("section").not("[id = 'photo-template']").remove();
-    $(() => Animal.readJson(this.value));
+// event for clicking on page1 | page2 buttons
+$('button').on('click', function () {
+  $("section").remove();
+  animals = [];
+  $(() => Animal.readJson(this.value));
+});
+
+$('#animalSort').on('change', function(){
+
+    $('section').remove();
+    console.log(this.value)
+
+    if (this.value === 'sortByTitle'){
+        animals.sort((a,b) => a.title > b.title ? 1:-1);
+        
+    }else if (this.value === 'sortByHornAscend'){
+        animals.sort((a,b) => a.horns - b.horns);
+
+    }else if (this.value === 'sortByHornDescend'){
+        animals.sort((a,b) => b.horns - a.horns);
+    };
+
+    animals.forEach(animal => $('main').append(animal.toHtml()));
+    $('#animalType').trigger('change');
+    
 });
